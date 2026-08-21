@@ -2,114 +2,264 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Delivery App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Express Delivery</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="bg-gray-100 font-sans p-4">
-  <div class="max-w-md mx-auto bg-white rounded-xl shadow-md p-6">
-    <h1 class="text-2xl font-bold text-center mb-4">Служба Доставки</h1>
+<body class="bg-gray-50 font-sans pb-20 select-none">
 
-    <!-- Авторизация -->
-    <div id="auth-section">
-      <h2 class="text-lg font-semibold mb-2">Вход</h2>
-      <input id="phone" type="tel" placeholder="Номер телефона" class="w-full border p-2 mb-2 rounded">
-      <input id="name" type="text" placeholder="Ваше имя" class="w-full border p-2 mb-3 rounded">
+  <!-- Шапка -->
+  <header class="bg-yellow-400 p-4 sticky top-0 z-50 shadow-md flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <i class="fa-solid fa-bolt text-xl text-black"></i>
+      <h1 class="font-black text-xl tracking-wide uppercase">Glovo Express</h1>
+    </div>
+    <div id="user-badge" class="text-xs bg-black text-white px-3 py-1 rounded-full hidden"></div>
+  </header>
+
+  <main class="max-w-md mx-auto p-4">
+
+    <!-- 1. ЭКРАН АВТОРИЗАЦИИ (SMS) -->
+    <div id="screen-auth" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <h2 class="text-2xl font-bold mb-1">Быстрый вход</h2>
+      <p class="text-gray-500 text-sm mb-4">Введите номер телефона для получения SMS</p>
       
-      <div class="flex gap-2">
-        <button onclick="login('client')" class="w-1/2 bg-blue-500 text-white py-2 rounded font-bold">Я Клиент</button>
-        <button onclick="login('courier')" class="w-1/2 bg-green-500 text-white py-2 rounded font-bold">Я Курьер</button>
+      <div id="phone-step">
+        <input id="auth-phone" type="tel" placeholder="+48 XXX XXX XXX" class="w-full bg-gray-100 p-3 rounded-xl mb-3 text-lg outline-none focus:ring-2 focus:ring-yellow-400">
+        <input id="auth-name" type="text" placeholder="Ваше Имя" class="w-full bg-gray-100 p-3 rounded-xl mb-3 outline-none">
+        
+        <div class="flex gap-2 mb-4">
+          <label class="flex-1 bg-gray-100 p-3 rounded-xl text-center cursor-pointer text-sm font-semibold">
+            <input type="radio" name="role" value="client" checked> Клиент
+          </label>
+          <label class="flex-1 bg-gray-100 p-3 rounded-xl text-center cursor-pointer text-sm font-semibold">
+            <input type="radio" name="role" value="courier"> Курьер
+          </label>
+        </div>
+
+        <button onclick="sendSmsCode()" class="w-full bg-yellow-400 font-bold p-3 rounded-xl shadow-md active:scale-95 transition">Получить SMS-код</button>
+      </div>
+
+      <div id="code-step" class="hidden">
+        <p class="text-xs text-green-600 mb-2 font-semibold">Тестовый SMS-код: 1111</p>
+        <input id="auth-code" type="number" placeholder="Код из SMS" class="w-full bg-gray-100 p-3 rounded-xl mb-3 text-lg text-center tracking-widest outline-none">
+        <button onclick="verifyCode()" class="w-full bg-black text-white font-bold p-3 rounded-xl shadow-md active:scale-95 transition">Войти</button>
       </div>
     </div>
 
-    <!-- Кабинет Клиента -->
-    <div id="client-section" class="hidden">
-      <h2 class="text-lg font-bold mb-2">Создать заказ</h2>
-      <textarea id="order-items" placeholder="Что привезти? (например: Кола из Жабки)" class="w-full border p-2 mb-2 rounded"></textarea>
-      <input id="order-address" type="text" placeholder="Адрес доставки" class="w-full border p-2 mb-3 rounded">
-      <button onclick="createOrder()" class="w-full bg-blue-600 text-white py-2 rounded font-bold">Заказать</button>
-      
-      <div id="client-active-order" class="mt-4 border-t pt-2 hidden">
-        <h3 class="font-bold">Текущий заказ:</h3>
-        <p id="client-order-info" class="text-sm my-1"></p>
-        <div id="client-chat" class="border p-2 h-32 overflow-y-auto my-2 text-xs bg-gray-50"></div>
-        <div class="flex gap-1">
-          <input id="client-msg" type="text" placeholder="Сообщение..." class="border p-1 text-sm flex-grow rounded">
-          <button onclick="sendMsg('client')" class="bg-blue-500 text-white px-3 text-sm rounded">Отправить</button>
+    <!-- 2. ГЛАВНЫЙ ЭКРАН КЛИЕНТА -->
+    <div id="screen-client" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+        <h2 class="text-xl font-bold mb-3">Привезем что угодно 📦</h2>
+        
+        <label class="text-xs text-gray-400 font-semibold uppercase">Что нужно привезти?</label>
+        <textarea id="order-items" placeholder="Например: Кола 1.5л из Жабки, чипсы и круассан" class="w-full bg-gray-100 p-3 rounded-xl mb-3 text-sm outline-none resize-none h-24"></textarea>
+
+        <label class="text-xs text-gray-400 font-semibold uppercase">Откуда забрать (необязательно)</label>
+        <input id="order-from" type="text" placeholder="Например: Żabka на ул. Главной" class="w-full bg-gray-100 p-3 rounded-xl mb-3 text-sm outline-none">
+
+        <label class="text-xs text-gray-400 font-semibold uppercase">Куда доставить?</label>
+        <input id="order-to" type="text" placeholder="Ваш адрес и квартира" class="w-full bg-gray-100 p-3 rounded-xl mb-4 text-sm outline-none">
+
+        <button onclick="submitOrder()" class="w-full bg-yellow-400 font-bold p-4 rounded-xl shadow-lg active:scale-95 transition text-lg">Заказать доставку</button>
+      </div>
+
+      <!-- Активный заказ клиента -->
+      <div id="client-active-box" class="bg-white p-5 rounded-2xl shadow-sm border border-yellow-300 hidden">
+        <div class="flex justify-between items-center mb-2">
+          <span class="font-bold text-sm" id="client-order-id"></span>
+          <span id="client-status-badge" class="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800 font-bold"></span>
+        </div>
+        <p id="client-order-text" class="text-sm text-gray-600 mb-3"></p>
+
+        <!-- Чат -->
+        <div class="border-t pt-3">
+          <h4 class="font-bold text-xs uppercase text-gray-400 mb-2">Чат с курьером</h4>
+          <div id="client-chat-messages" class="h-32 overflow-y-auto bg-gray-50 p-2 rounded-xl text-xs space-y-2 mb-2"></div>
+          <div class="flex gap-2">
+            <input id="client-msg-input" type="text" placeholder="Написать..." class="flex-grow bg-gray-100 p-2 rounded-lg text-xs outline-none">
+            <button onclick="sendChatMessage('client')" class="bg-black text-white px-4 py-2 rounded-lg text-xs font-bold">></button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Кабинет Курьера -->
-    <div id="courier-section" class="hidden">
-      <h2 class="text-lg font-bold mb-2">Заказы в базе</h2>
-      <div id="orders-list" class="space-y-2"></div>
-      
-      <div id="courier-chat-section" class="mt-4 border-t pt-2 hidden">
-        <h3 class="font-bold">Чат по заказу:</h3>
-        <div id="courier-chat" class="border p-2 h-32 overflow-y-auto my-2 text-xs bg-gray-50"></div>
-        <div class="flex gap-1">
-          <input id="courier-msg" type="text" placeholder="Сообщение..." class="border p-1 text-sm flex-grow rounded">
-          <button onclick="sendMsg('courier')" class="bg-green-500 text-white px-3 text-sm rounded">Отправить</button>
+    <!-- 3. ГЛАВНЫЙ ЭКРАН КУРЬЕРА -->
+    <div id="screen-courier" class="hidden space-y-4">
+      <h2 class="text-lg font-bold">Доступные заказы</h2>
+      <div id="courier-orders-list" class="space-y-3"></div>
+
+      <!-- Чат курьера -->
+      <div id="courier-active-chat" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hidden">
+        <h3 class="font-bold text-sm mb-2">Чат по текущему заказу</h3>
+        <div id="courier-chat-messages" class="h-32 overflow-y-auto bg-gray-50 p-2 rounded-xl text-xs space-y-2 mb-2"></div>
+        <div class="flex gap-2">
+          <input id="courier-msg-input" type="text" placeholder="Написать клиенту..." class="flex-grow bg-gray-100 p-2 rounded-lg text-xs outline-none">
+          <button onclick="sendChatMessage('courier')" class="bg-yellow-400 font-bold px-4 py-2 rounded-lg text-xs">></button>
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- 4. ПРОФИЛЬ И НАСТРОЙКИ -->
+    <div id="screen-profile" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+      <h2 class="text-xl font-bold">Профиль</h2>
+      <div class="border-b pb-3">
+        <p class="text-xs text-gray-400">Имя</p>
+        <p id="profile-name" class="font-semibold"></p>
+        <p class="text-xs text-gray-400 mt-2">Телефон</p>
+        <p id="profile-phone" class="font-semibold"></p>
+      </div>
+
+      <div class="space-y-2">
+        <button onclick="alert('Техподдержка: +48 000 000 000\nEmail: support@delivery.com')" class="w-full text-left p-3 bg-gray-50 rounded-xl text-sm font-semibold flex items-center justify-between">
+          <span><i class="fa-solid fa-headset mr-2"></i> Помощь и поддержка</span>
+          <i class="fa-solid fa-chevron-right text-xs text-gray-400"></i>
+        </button>
+        
+        <button onclick="logout()" class="w-full text-left p-3 bg-gray-50 rounded-xl text-sm font-semibold text-orange-600 flex items-center justify-between">
+          <span><i class="fa-solid fa-right-from-bracket mr-2"></i> Выйти из аккаунта</span>
+        </button>
+
+        <button onclick="deleteAccount()" class="w-full text-left p-3 bg-red-50 rounded-xl text-sm font-semibold text-red-600 flex items-center justify-between">
+          <span><i class="fa-solid fa-trash mr-2"></i> Удалить аккаунт</span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Нижнее навигационное меню -->
+  <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white border-t p-2 flex justify-around items-center z-50 hidden">
+    <button onclick="switchTab('main')" class="flex flex-col items-center text-yellow-500">
+      <i class="fa-solid fa-house text-lg"></i>
+      <span class="text-[10px] font-bold">Главная</span>
+    </button>
+    <button onclick="switchTab('profile')" class="flex flex-col items-center text-gray-400">
+      <i class="fa-solid fa-user text-lg"></i>
+      <span class="text-[10px] font-bold">Профиль</span>
+    </button>
+  </nav>
 
   <script>
     const BACKEND_URL = "https://delivery-app-bnst.onrender.com";
     const socket = io(BACKEND_URL);
 
-    let currentUser = { role: '', phone: '', name: '' };
+    let user = JSON.parse(localStorage.getItem('app_user')) || null;
     let activeOrderId = null;
 
-    function login(role) {
-      currentUser.phone = document.getElementById('phone').value;
-      currentUser.name = document.getElementById('name').value;
-      currentUser.role = role;
+    window.onload = () => {
+      if (user) initApp();
+    };
 
-      if (!currentUser.phone) return alert("Введите номер!");
+    async function sendSmsCode() {
+      const phone = document.getElementById('auth-phone').value;
+      if (!phone) return alert('Введите номер');
+      
+      await fetch(`${BACKEND_URL}/api/auth/send-code`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ phone })
+      });
 
-      document.getElementById('auth-section').classList.add('hidden');
-      if (role === 'client') {
-        document.getElementById('client-section').classList.remove('hidden');
+      document.getElementById('phone-step').classList.add('hidden');
+      document.getElementById('code-step').classList.remove('hidden');
+    }
+
+    async function verifyCode() {
+      const phone = document.getElementById('auth-phone').value;
+      const code = document.getElementById('auth-code').value;
+      const name = document.getElementById('auth-name').value;
+      const role = document.querySelector('input[name="role"]:checked').value;
+
+      const res = await fetch(`${BACKEND_URL}/api/auth/verify`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ phone, code, name, role })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        user = data.user;
+        localStorage.setItem('app_user', JSON.stringify(user));
+        initApp();
       } else {
-        document.getElementById('courier-section').classList.remove('hidden');
-        loadOrders();
+        alert(data.error);
       }
     }
 
-    async function createOrder() {
+    function initApp() {
+      document.getElementById('screen-auth').classList.add('hidden');
+      document.getElementById('bottom-nav').classList.remove('hidden');
+      
+      const badge = document.getElementById('user-badge');
+      badge.innerText = user.role === 'client' ? 'Клиент' : 'Курьер';
+      badge.classList.remove('hidden');
+
+      document.getElementById('profile-name').innerText = user.name;
+      document.getElementById('profile-phone').innerText = user.phone;
+
+      switchTab('main');
+    }
+
+    function switchTab(tab) {
+      document.getElementById('screen-client').classList.add('hidden');
+      document.getElementById('screen-courier').classList.add('hidden');
+      document.getElementById('screen-profile').classList.add('hidden');
+
+      if (tab === 'profile') {
+        document.getElementById('screen-profile').classList.remove('hidden');
+      } else {
+        if (user.role === 'client') {
+          document.getElementById('screen-client').classList.remove('hidden');
+        } else {
+          document.getElementById('screen-courier').classList.remove('hidden');
+          loadCourierOrders();
+        }
+      }
+    }
+
+    async function submitOrder() {
       const items = document.getElementById('order-items').value;
-      const address = document.getElementById('order-address').value;
+      const fromAddress = document.getElementById('order-from').value;
+      const toAddress = document.getElementById('order-to').value;
+
+      if (!items || !toAddress) return alert('Заполните товары и адрес!');
 
       const res = await fetch(`${BACKEND_URL}/api/orders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientPhone: currentUser.phone, clientName: currentUser.name, items, address })
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ clientPhone: user.phone, clientName: user.name, items, fromAddress, toAddress })
       });
+
       const order = await res.json();
       activeOrderId = order.id;
       socket.emit('join_order', activeOrderId);
 
-      document.getElementById('client-active-order').classList.remove('hidden');
-      document.getElementById('client-order-info').innerText = `ID: ${order.id} | Статус: ${order.status}`;
+      document.getElementById('client-active-box').classList.remove('hidden');
+      document.getElementById('client-order-id').innerText = order.id;
+      document.getElementById('client-status-badge').innerText = 'Поиск курьера';
+      document.getElementById('client-order-text').innerText = `${order.items} ➡️ ${order.toAddress}`;
     }
 
-    async function loadOrders() {
+    async function loadCourierOrders() {
       const res = await fetch(`${BACKEND_URL}/api/orders`);
       const orders = await res.json();
-      const list = document.getElementById('orders-list');
+      const list = document.getElementById('courier-orders-list');
       list.innerHTML = '';
 
       orders.forEach(o => {
         list.innerHTML += `
-          <div class="border p-2 rounded bg-gray-50 text-sm">
-            <p><strong>Заказ ${o.id}</strong>: ${o.items}</p>
-            <p>Адрес: ${o.address}</p>
-            <p>Статус: ${o.status}</p>
-            ${o.status === 'created' ? `<button onclick="takeOrder('${o.id}')" class="bg-green-600 text-white px-2 py-1 mt-1 rounded text-xs">Взять заказ</button>` : ''}
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-sm">
+            <div class="flex justify-between font-bold mb-1">
+              <span>${o.id}</span>
+              <span class="text-xs bg-gray-100 px-2 py-0.5 rounded">${o.status}</span>
+            </div>
+            <p class="text-gray-700"><strong>Что:</strong> ${o.items}</p>
+            <p class="text-gray-500 text-xs mt-1">📍 Откуда: ${o.fromAddress}</p>
+            <p class="text-gray-500 text-xs">🏠 Куда: ${o.toAddress}</p>
+            ${o.status === 'created' ? `<button onclick="takeOrder('${o.id}')" class="w-full bg-yellow-400 font-bold py-2 mt-3 rounded-xl">Взять заказ</button>` : ''}
           </div>
         `;
       });
@@ -118,24 +268,40 @@
     function takeOrder(id) {
       activeOrderId = id;
       socket.emit('join_order', id);
-      socket.emit('take_order', { orderId: id, courierId: currentUser.phone });
-      document.getElementById('courier-chat-section').classList.remove('hidden');
-      loadOrders();
+      socket.emit('take_order', { orderId: id, courierId: user.phone });
+      document.getElementById('courier-active-chat').classList.remove('hidden');
+      loadCourierOrders();
     }
 
-    function sendMsg(role) {
-      const input = document.getElementById(role + '-msg');
+    function sendChatMessage(role) {
+      const input = document.getElementById(role + '-msg-input');
       if (!input.value || !activeOrderId) return;
-      socket.emit('send_message', { orderId: activeOrderId, sender: currentUser.name, text: input.value });
+      socket.emit('send_message', { orderId: activeOrderId, sender: user.name, text: input.value });
       input.value = '';
     }
 
-    socket.on('order_created', () => { if (currentUser.role === 'courier') loadOrders(); });
-    socket.on('order_status_changed', () => { if (currentUser.role === 'courier') loadOrders(); });
     socket.on('new_message', (msg) => {
-      const boxId = currentUser.role === 'client' ? 'client-chat' : 'courier-chat';
-      document.getElementById(boxId).innerHTML += `<div><strong>${msg.sender}:</strong> ${msg.text}</div>`;
+      const boxId = user.role === 'client' ? 'client-chat-messages' : 'courier-chat-messages';
+      document.getElementById(boxId).innerHTML += `<div class="bg-white p-2 rounded-lg shadow-xs"><strong>${msg.sender}:</strong> ${msg.text}</div>`;
     });
+
+    socket.on('order_created', () => { if (user && user.role === 'courier') loadCourierOrders(); });
+
+    function logout() {
+      localStorage.removeItem('app_user');
+      location.reload();
+    }
+
+    async function deleteAccount() {
+      if (confirm('Вы уверены, что хотите удалить аккаунт?')) {
+        await fetch(`${BACKEND_URL}/api/user/delete`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ phone: user.phone })
+        });
+        logout();
+      }
+    }
   </script>
 </body>
 </html>
