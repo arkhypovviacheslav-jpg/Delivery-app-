@@ -2,334 +2,320 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DostavaGo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="bg-gray-50 font-sans pb-20 select-none">
+<body class="bg-slate-900 text-white min-h-screen flex justify-center items-center p-4">
 
-  <!-- Шапка -->
-  <header class="bg-yellow-400 p-4 sticky top-0 z-50 shadow-md flex justify-between items-center">
-    <div class="flex items-center gap-2">
-      <i class="fa-solid fa-truck-fast text-xl text-black"></i>
-      <h1 class="font-black text-xl tracking-wide uppercase">DostavaGo</h1>
-    </div>
-    <div id="user-badge" class="text-xs bg-black text-white px-3 py-1 rounded-full hidden"></div>
-  </header>
+  <div id="app" class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-slate-700 min-h-[600px] flex flex-col">
+    <!-- Шапка -->
+    <header class="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-yellow-500">DostavaGo</h1>
+      <span id="user-info" class="text-xs text-slate-400"></span>
+    </header>
 
-  <main class="max-w-md mx-auto p-4">
-
-    <!-- 1. ЭКРАН АВТОРИЗАЦИИ -->
-    <div id="screen-auth" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <h2 class="text-2xl font-bold mb-1">DostavaGo</h2>
-      <p class="text-gray-500 text-sm mb-4">Выберите способ входа</p>
-
-      <!-- Переключатель роли -->
-      <div class="flex gap-2 mb-4">
-        <button id="btn-role-client" onclick="toggleAuthRole('client')" class="flex-1 bg-yellow-400 text-black font-bold p-3 rounded-xl text-center text-sm">Вход для Клиента</button>
-        <button id="btn-role-courier" onclick="toggleAuthRole('courier')" class="flex-1 bg-gray-100 text-gray-600 font-bold p-3 rounded-xl text-center text-sm">Вход для Курьера</button>
-      </div>
-
-      <!-- ФОРМА КЛИЕНТА (SMS) -->
-      <div id="auth-client-form">
-        <div id="phone-step">
-          <input id="auth-phone" type="tel" placeholder="+48 XXX XXX XXX" class="w-full bg-gray-100 p-3 rounded-xl mb-3 text-lg outline-none focus:ring-2 focus:ring-yellow-400">
-          <input id="auth-name" type="text" placeholder="Ваше Имя" class="w-full bg-gray-100 p-3 rounded-xl mb-3 outline-none">
-          <button onclick="sendSmsCode()" class="w-full bg-yellow-400 font-bold p-3 rounded-xl shadow-md active:scale-95 transition">Получить SMS-код</button>
-        </div>
-
-        <div id="code-step" class="hidden">
-          <p class="text-xs text-green-600 mb-2 font-semibold">Тестовый SMS-код: 1111</p>
-          <input id="auth-code" type="number" placeholder="Код из SMS" class="w-full bg-gray-100 p-3 rounded-xl mb-3 text-lg text-center tracking-widest outline-none">
-          <button onclick="verifyCode()" class="w-full bg-black text-white font-bold p-3 rounded-xl shadow-md active:scale-95 transition">Войти как Клиент</button>
-        </div>
-      </div>
-
-      <!-- ФОРМА КУРЬЕРА (Логин/Пароль) -->
-      <div id="auth-courier-form" class="hidden space-y-3">
-        <input id="courier-login" type="text" placeholder="Логин (например: Вячеслав Архипов 2771)" class="w-full bg-gray-100 p-3 rounded-xl text-sm outline-none">
-        <input id="courier-password" type="password" placeholder="Пароль (admin2771)" class="w-full bg-gray-100 p-3 rounded-xl text-sm outline-none">
-        <button onclick="loginAsCourier()" class="w-full bg-black text-white font-bold p-3 rounded-xl shadow-md active:scale-95 transition">Войти как Курьер</button>
-      </div>
-    </div>
-
-    <!-- 2. ГЛАВНЫЙ ЭКРАН КЛИЕНТА -->
-    <div id="screen-client" class="hidden space-y-4">
-      <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-        <h2 class="text-xl font-bold mb-3">Привезем что угодно 📦</h2>
+    <!-- Экран Авторизации/Регистрации -->
+    <div id="auth-screen" class="p-6 flex-1 flex flex-col justify-center">
+      <div id="auth-forms">
+        <h2 class="text-2xl font-bold text-center mb-6" id="auth-title">Вход для клиента</h2>
         
-        <label class="text-xs text-gray-400 font-semibold uppercase">Что нужно привезти?</label>
-        <textarea id="order-items" placeholder="Например: Кола 1.5л из Жабки, чипсы и круассан" class="w-full bg-gray-100 p-3 rounded-xl mb-3 text-sm outline-none resize-none h-24"></textarea>
+        <!-- Форма Входа -->
+        <form id="login-form" class="space-y-4">
+          <input type="email" id="login-email" placeholder="Email" required class="w-full p-3 bg-slate-700 rounded-lg text-white border border-slate-600 focus:outline-none focus:border-yellow-500">
+          <input type="password" id="login-pass" placeholder="Пароль" required class="w-full p-3 bg-slate-700 rounded-lg text-white border border-slate-600 focus:outline-none focus:border-yellow-500">
+          <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold p-3 rounded-lg">Войти</button>
+          <p class="text-center text-sm text-slate-400 mt-4">Нет аккаунта? <a href="#" id="to-register" class="text-yellow-500 underline">Зарегистрироваться</a></p>
+        </form>
 
-        <label class="text-xs text-gray-400 font-semibold uppercase">Откуда забрать (необязательно)</label>
-        <input id="order-from" type="text" placeholder="Например: Żabka" class="w-full bg-gray-100 p-3 rounded-xl mb-3 text-sm outline-none">
+        <!-- Шаг 1 Регистрации: Ввод Email -->
+        <form id="reg-step-1" class="space-y-4 hidden">
+          <input type="email" id="reg-email" placeholder="Ваш Email" required class="w-full p-3 bg-slate-700 rounded-lg text-white border border-slate-600 focus:outline-none focus:border-yellow-500">
+          <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold p-3 rounded-lg">Получить код на Email</button>
+          <p class="text-center text-sm text-slate-400 mt-4">Уже есть аккаунт? <a href="#" id="to-login" class="text-yellow-500 underline">Войти</a></p>
+        </form>
 
-        <label class="text-xs text-gray-400 font-semibold uppercase">Куда доставить?</label>
-        <input id="order-to" type="text" placeholder="Ваш адрес" class="w-full bg-gray-100 p-3 rounded-xl mb-4 text-sm outline-none">
-
-        <button onclick="submitOrder()" class="w-full bg-yellow-400 font-bold p-4 rounded-xl shadow-lg active:scale-95 transition text-lg">Заказать доставку</button>
+        <!-- Шаг 2 Регистрации: Ввод Кода и Данных -->
+        <form id="reg-step-2" class="space-y-3 hidden">
+          <p class="text-xs text-yellow-400 text-center">Код подтверждения отправлен на вашу почту!</p>
+          <input type="text" id="reg-code" placeholder="6-значный код из письма" required class="w-full p-3 bg-slate-700 rounded-lg text-yellow-400 font-bold text-center border border-slate-600">
+          <input type="text" id="reg-name" placeholder="Имя и Фамилия" required class="w-full p-3 bg-slate-700 rounded-lg text-white border border-slate-600">
+          <input type="tel" id="reg-phone" placeholder="Номер телефона (+48...)" required class="w-full p-3 bg-slate-700 rounded-lg text-white border border-slate-600">
+          <input type="password" id="reg-pass" placeholder="Придумайте пароль" required class="w-full p-3 bg-slate-700 rounded-lg text-white border border-slate-600">
+          <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold p-3 rounded-lg">Завершить регистрацию</button>
+        </form>
       </div>
 
-      <!-- Активный заказ клиента -->
-      <div id="client-active-box" class="bg-white p-5 rounded-2xl shadow-sm border border-yellow-300 hidden">
-        <div class="flex justify-between items-center mb-2">
-          <span class="font-bold text-sm" id="client-order-id"></span>
-          <span id="client-status-badge" class="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800 font-bold"></span>
-        </div>
-        <p id="client-order-text" class="text-sm text-gray-600 mb-3"></p>
-
-        <!-- Чат -->
-        <div class="border-t pt-3">
-          <h4 class="font-bold text-xs uppercase text-gray-400 mb-2">Чат с курьером</h4>
-          <div id="client-chat-messages" class="h-32 overflow-y-auto bg-gray-50 p-2 rounded-xl text-xs space-y-2 mb-2"></div>
-          <div class="flex gap-2">
-            <input id="client-msg-input" type="text" placeholder="Написать..." class="flex-grow bg-gray-100 p-2 rounded-lg text-xs outline-none">
-            <button onclick="sendChatMessage('client')" class="bg-black text-white px-4 py-2 rounded-lg text-xs font-bold">></button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3. ГЛАВНЫЙ ЭКРАН КУРЬЕРА -->
-    <div id="screen-courier" class="hidden space-y-4">
-      <div class="flex justify-between items-center">
-        <h2 class="text-lg font-bold">Заказы в базе</h2>
-        <button onclick="loadCourierOrders()" class="text-xs bg-gray-200 px-3 py-1 rounded-lg font-bold">Обновить 🔄</button>
-      </div>
-      
-      <div id="courier-orders-list" class="space-y-3"></div>
-
-      <!-- Чат курьера -->
-      <div id="courier-active-chat" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hidden">
-        <h3 class="font-bold text-sm mb-2">Чат по выбранному заказу</h3>
-        <div id="courier-chat-messages" class="h-32 overflow-y-auto bg-gray-50 p-2 rounded-xl text-xs space-y-2 mb-2"></div>
-        <div class="flex gap-2">
-          <input id="courier-msg-input" type="text" placeholder="Написать клиенту..." class="flex-grow bg-gray-100 p-2 rounded-lg text-xs outline-none">
-          <button onclick="sendChatMessage('courier')" class="bg-yellow-400 font-bold px-4 py-2 rounded-lg text-xs">></button>
-        </div>
+      <div class="mt-8 text-center border-t border-slate-700 pt-4">
+        <button id="courier-login-btn" class="text-xs text-slate-400 underline hover:text-white">Вход для курьера</button>
       </div>
     </div>
 
-    <!-- 4. ПРОФИЛЬ И НАСТРОЙКИ -->
-    <div id="screen-profile" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-      <h2 class="text-xl font-bold">Профиль</h2>
-      <div class="border-b pb-3">
-        <p class="text-xs text-gray-400">Пользователь</p>
-        <p id="profile-name" class="font-semibold"></p>
-        <p class="text-xs text-gray-400 mt-2">Логин / Телефон</p>
-        <p id="profile-phone" class="font-semibold"></p>
-      </div>
-
-      <div class="space-y-2">
-        <button onclick="alert('DostavaGo Support:\nEmail: support@dostavago.com')" class="w-full text-left p-3 bg-gray-50 rounded-xl text-sm font-semibold flex items-center justify-between">
-          <span><i class="fa-solid fa-headset mr-2"></i> Поддержка DostavaGo</span>
-          <i class="fa-solid fa-chevron-right text-xs text-gray-400"></i>
-        </button>
-        
-        <button onclick="logout()" class="w-full text-left p-3 bg-red-50 rounded-xl text-sm font-semibold text-red-600 flex items-center justify-between">
-          <span><i class="fa-solid fa-right-from-bracket mr-2"></i> Сменить роль / Выйти</span>
-        </button>
-      </div>
+    <!-- Экран Клиента -->
+    <div id="client-screen" class="p-6 flex-1 flex-col hidden">
+      <h3 class="text-lg font-bold mb-4 text-yellow-500">Создать новый заказ</h3>
+      <form id="order-form" class="space-y-3 mb-6">
+        <textarea id="order-items" placeholder="Что нужно купить/доставить?" required class="w-full p-3 bg-slate-700 rounded-lg text-white border border-slate-600 h-20"></textarea>
+        <input type="text" id="order-from" placeholder="Откуда (магазин / адрес)" class="w-full p-3 bg-slate-700 rounded-lg text-white border border-slate-600">
+        <input type="text" id="order-to" placeholder="Куда (ваш адрес)" required class="w-full p-3 bg-slate-700 rounded-lg text-white border border-slate-600">
+        <button type="submit" class="w-full bg-yellow-500 text-slate-900 font-bold p-3 rounded-lg">Оформить заказ</button>
+      </form>
+      <h3 class="text-md font-bold mb-2">Мои заказы:</h3>
+      <div id="client-orders-list" class="space-y-2 flex-1 overflow-y-auto max-h-48"></div>
     </div>
 
-  </main>
+    <!-- Экран Курьера -->
+    <div id="courier-screen" class="p-6 flex-1 flex-col hidden">
+      <h3 class="text-lg font-bold mb-4 text-yellow-500">Список заказов клиентов</h3>
+      <div id="courier-orders-list" class="space-y-3 flex-1 overflow-y-auto"></div>
+    </div>
 
-  <!-- Нижнее навигационное меню -->
-  <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white border-t p-2 flex justify-around items-center z-50 hidden">
-    <button onclick="switchTab('main')" class="flex flex-col items-center text-yellow-500">
-      <i class="fa-solid fa-house text-lg"></i>
-      <span class="text-[10px] font-bold">Главная</span>
-    </button>
-    <button onclick="switchTab('profile')" class="flex flex-col items-center text-gray-400">
-      <i class="fa-solid fa-user text-lg"></i>
-      <span class="text-[10px] font-bold">Профиль</span>
-    </button>
-  </nav>
+    <!-- Экран Чата -->
+    <div id="chat-screen" class="flex-1 flex flex-col hidden">
+      <div class="p-3 bg-slate-700 flex justify-between items-center border-b border-slate-600">
+        <button id="back-from-chat" class="text-xs text-yellow-500 font-bold">← Назад</button>
+        <span id="chat-title" class="text-xs font-bold"></span>
+      </div>
+      <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 max-h-80"></div>
+      <form id="chat-form" class="p-3 bg-slate-900 border-t border-slate-700 flex gap-2 items-center">
+        <label class="cursor-pointer text-slate-400 hover:text-yellow-500 p-2">
+          📷
+          <input type="file" id="chat-file" accept="image/*" class="hidden">
+        </label>
+        <input type="text" id="chat-input" placeholder="Сообщение..." class="flex-1 p-2 bg-slate-800 rounded-lg text-white border border-slate-700 text-sm">
+        <button type="submit" class="bg-yellow-500 text-slate-900 font-bold px-4 py-2 rounded-lg text-sm">Send</button>
+      </form>
+    </div>
+  </div>
 
   <script>
-    const BACKEND_URL = "https://delivery-app-bnst.onrender.com";
+    const BACKEND_URL = 'https://delivery-app-bnst.onrender.com';
     const socket = io(BACKEND_URL);
 
-    let user = JSON.parse(localStorage.getItem('app_user')) || null;
-    let selectedAuthRole = 'client';
+    let currentUser = null;
     let activeOrderId = null;
 
-    window.onload = () => {
-      if (user) initApp();
+    // Элементы
+    const authScreen = document.getElementById('auth-screen');
+    const clientScreen = document.getElementById('client-screen');
+    const courierScreen = document.getElementById('courier-screen');
+    const chatScreen = document.getElementById('chat-screen');
+
+    const loginForm = document.getElementById('login-form');
+    const regStep1 = document.getElementById('reg-step-1');
+    const regStep2 = document.getElementById('reg-step-2');
+
+    document.getElementById('to-register').onclick = () => {
+      loginForm.classList.add('hidden');
+      regStep1.classList.remove('hidden');
+      document.getElementById('auth-title').innerText = 'Регистрация';
+    };
+    document.getElementById('to-login').onclick = () => {
+      regStep1.classList.add('hidden');
+      loginForm.classList.remove('hidden');
+      document.getElementById('auth-title').innerText = 'Вход для клиента';
     };
 
-    function toggleAuthRole(role) {
-      selectedAuthRole = role;
-      if (role === 'client') {
-        document.getElementById('btn-role-client').className = "flex-1 bg-yellow-400 text-black font-bold p-3 rounded-xl text-center text-sm";
-        document.getElementById('btn-role-courier').className = "flex-1 bg-gray-100 text-gray-600 font-bold p-3 rounded-xl text-center text-sm";
-        document.getElementById('auth-client-form').classList.remove('hidden');
-        document.getElementById('auth-courier-form').classList.add('hidden');
-      } else {
-        document.getElementById('btn-role-courier').className = "flex-1 bg-black text-white font-bold p-3 rounded-xl text-center text-sm";
-        document.getElementById('btn-role-client').className = "flex-1 bg-gray-100 text-gray-600 font-bold p-3 rounded-xl text-center text-sm";
-        document.getElementById('auth-courier-form').classList.remove('hidden');
-        document.getElementById('auth-client-form').classList.add('hidden');
-      }
-    }
-
-    async function sendSmsCode() {
-      const phone = document.getElementById('auth-phone').value;
-      if (!phone) return alert('Введите номер');
-      
-      await fetch(`${BACKEND_URL}/api/auth/send-code`, {
+    // 1. Отправка кода на почту
+    regStep1.onsubmit = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('reg-email').value;
+      const res = await fetch(`${BACKEND_URL}/api/auth/send-email-code`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ phone })
-      });
-
-      document.getElementById('phone-step').classList.add('hidden');
-      document.getElementById('code-step').classList.remove('hidden');
-    }
-
-    async function verifyCode() {
-      const phone = document.getElementById('auth-phone').value;
-      const code = document.getElementById('auth-code').value;
-      const name = document.getElementById('auth-name').value || 'Клиент';
-
-      const res = await fetch(`${BACKEND_URL}/api/auth/verify`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ phone, code, name, role: 'client' })
+        body: JSON.stringify({ email })
       });
       const data = await res.json();
-
       if (data.success) {
-        user = data.user;
-        localStorage.setItem('app_user', JSON.stringify(user));
-        initApp();
+        regStep1.classList.add('hidden');
+        regStep2.classList.remove('hidden');
+      } else {
+        alert(data.error || "Ошибка отправки кода");
+      }
+    };
+
+    // 2. Подтверждение кода и регистрация
+    regStep2.onsubmit = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('reg-email').value;
+      const code = document.getElementById('reg-code').value;
+      const fullName = document.getElementById('reg-name').value;
+      const phone = document.getElementById('reg-phone').value;
+      const password = document.getElementById('reg-pass').value;
+
+      const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ email, code, fullName, phone, password })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Регистрация успешна! Теперь войдите.");
+        location.reload();
       } else {
         alert(data.error);
       }
-    }
+    };
 
-    function loginAsCourier() {
-      const loginVal = document.getElementById('courier-login').value;
-      const passVal = document.getElementById('courier-password').value;
+    // Вход
+    loginForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-pass').value;
 
-      if (loginVal === 'Вячеслав Архипов 2771' && passVal === 'admin2771') {
-        user = { name: 'Вячеслав Архипов', phone: '2771', role: 'courier' };
-        localStorage.setItem('app_user', JSON.stringify(user));
-        initApp();
+      const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (data.success) {
+        currentUser = data.user;
+        openApp();
       } else {
-        alert('Неверный логин или пароль курьера!');
+        alert(data.error);
+      }
+    };
+
+    // Вход для курьера
+    document.getElementById('courier-login-btn').onclick = () => {
+      const pass = prompt("Пароль курьера:");
+      if (pass === 'admin2771') {
+        currentUser = { name: 'Вячеслав Архипов (Курьер)', role: 'courier' };
+        openApp();
+      } else {
+        alert("Неверный пароль");
+      }
+    };
+
+    function openApp() {
+      authScreen.classList.add('hidden');
+      document.getElementById('user-info').innerText = currentUser.name;
+      if (currentUser.role === 'courier') {
+        courierScreen.classList.remove('hidden');
+        loadCourierOrders();
+      } else {
+        clientScreen.classList.remove('hidden');
+        loadClientOrders();
       }
     }
 
-    function initApp() {
-      document.getElementById('screen-auth').classList.add('hidden');
-      document.getElementById('bottom-nav').classList.remove('hidden');
-      
-      const badge = document.getElementById('user-badge');
-      badge.innerText = user.role === 'client' ? 'Клиент' : 'Курьер 🚚';
-      badge.classList.remove('hidden');
-
-      document.getElementById('profile-name').innerText = user.name;
-      document.getElementById('profile-phone').innerText = user.phone;
-
-      switchTab('main');
-    }
-
-    function switchTab(tab) {
-      document.getElementById('screen-client').classList.add('hidden');
-      document.getElementById('screen-courier').classList.add('hidden');
-      document.getElementById('screen-profile').classList.add('hidden');
-
-      if (tab === 'profile') {
-        document.getElementById('screen-profile').classList.remove('hidden');
-      } else {
-        if (user.role === 'client') {
-          document.getElementById('screen-client').classList.remove('hidden');
-        } else {
-          document.getElementById('screen-courier').classList.remove('hidden');
-          loadCourierOrders();
-        }
-      }
-    }
-
-    async function submitOrder() {
+    // Создание заказа
+    document.getElementById('order-form').onsubmit = async (e) => {
+      e.preventDefault();
       const items = document.getElementById('order-items').value;
       const fromAddress = document.getElementById('order-from').value;
       const toAddress = document.getElementById('order-to').value;
 
-      if (!items || !toAddress) return alert('Заполните товары и адрес!');
-
-      const res = await fetch(`${BACKEND_URL}/api/orders`, {
+      await fetch(`${BACKEND_URL}/api/orders`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ clientPhone: user.phone, clientName: user.name, items, fromAddress, toAddress })
+        body: JSON.stringify({
+          userEmail: currentUser.email,
+          userPhone: currentUser.phone,
+          userName: currentUser.name,
+          items, fromAddress, toAddress
+        })
       });
+      document.getElementById('order-items').value = '';
+      loadClientOrders();
+    };
 
-      const order = await res.json();
-      activeOrderId = order.id;
-      socket.emit('join_order', activeOrderId);
-
-      document.getElementById('client-active-box').classList.remove('hidden');
-      document.getElementById('client-order-id').innerText = order.id;
-      document.getElementById('client-status-badge').innerText = 'Поиск курьера';
-      document.getElementById('client-order-text').innerText = `${order.items} ➡️ ${order.toAddress}`;
+    async function loadClientOrders() {
+      const res = await fetch(`${BACKEND_URL}/api/orders/user/${currentUser.email}`);
+      const orders = await res.json();
+      const list = document.getElementById('client-orders-list');
+      list.innerHTML = orders.map(o => `
+        <div onclick="openChat('${o.id}')" class="p-3 bg-slate-700 rounded-lg cursor-pointer hover:bg-slate-600 flex justify-between">
+          <div>
+            <div class="font-bold text-sm">${o.items}</div>
+            <div class="text-xs text-slate-400">Статус: ${o.status}</div>
+          </div>
+          <span class="text-xs text-yellow-500 font-bold">Чат 💬</span>
+        </div>
+      `).join('');
     }
 
     async function loadCourierOrders() {
       const res = await fetch(`${BACKEND_URL}/api/orders`);
       const orders = await res.json();
       const list = document.getElementById('courier-orders-list');
-      list.innerHTML = '';
+      list.innerHTML = orders.map(o => `
+        <div class="p-3 bg-slate-700 rounded-lg space-y-1">
+          <div class="font-bold text-yellow-400">${o.items}</div>
+          <div class="text-xs">👤 Клиент: ${o.user_name} (${o.user_phone})</div>
+          <div class="text-xs text-slate-300">📍 Доставить: ${o.to_address}</div>
+          <button onclick="openChat('${o.id}')" class="w-full mt-2 bg-yellow-500 text-slate-900 text-xs font-bold py-1 rounded">Открыть чат с клиентом</button>
+        </div>
+      `).join('');
+    }
 
-      if (orders.length === 0) {
-        list.innerHTML = `<p class="text-center text-gray-400 py-4">Активных заказов пока нет</p>`;
-        return;
+    // Чат
+    async function openChat(orderId) {
+      activeOrderId = orderId;
+      clientScreen.classList.add('hidden');
+      courierScreen.classList.add('hidden');
+      chatScreen.classList.remove('hidden');
+      document.getElementById('chat-title').innerText = `Чат по заказу ${orderId}`;
+      
+      socket.emit('join_order', orderId);
+
+      const res = await fetch(`${BACKEND_URL}/api/messages/${orderId}`);
+      const msgs = await res.json();
+      const box = document.getElementById('chat-messages');
+      box.innerHTML = msgs.map(renderMsg).join('');
+    }
+
+    document.getElementById('back-from-chat').onclick = () => {
+      chatScreen.classList.add('hidden');
+      if (currentUser.role === 'courier') courierScreen.classList.remove('hidden');
+      else clientScreen.classList.remove('hidden');
+    };
+
+    function renderMsg(m) {
+      return `
+        <div class="bg-slate-700 p-2 rounded-lg text-sm max-w-[80%] ${m.sender === currentUser.name ? 'ml-auto bg-yellow-900/40 border border-yellow-500/30' : ''}">
+          <div class="text-[10px] text-yellow-500 font-bold">${m.sender}</div>
+          ${m.text ? `<div>${m.text}</div>` : ''}
+          ${m.photo_url ? `<img src="${m.photo_url}" class="mt-1 rounded max-h-40">` : ''}
+        </div>
+      `;
+    }
+
+    document.getElementById('chat-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const fileInput = document.getElementById('chat-file');
+      let photoUrl = null;
+
+      if (fileInput.files[0]) {
+        photoUrl = await new Promise(res => {
+          const r = new FileReader();
+          r.onload = () => res(r.result);
+          r.readAsDataURL(fileInput.files[0]);
+        });
       }
 
-      orders.forEach(o => {
-        list.innerHTML += `
-          <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-sm">
-            <div class="flex justify-between font-bold mb-1">
-              <span>${o.id}</span>
-              <span class="text-xs bg-gray-100 px-2 py-0.5 rounded">${o.status}</span>
-            </div>
-            <p class="text-gray-700"><strong>Заказ:</strong> ${o.items}</p>
-            <p class="text-gray-500 text-xs mt-1">📍 Откуда: ${o.fromAddress}</p>
-            <p class="text-gray-500 text-xs">🏠 Куда: ${o.toAddress}</p>
-            ${o.status === 'created' ? `<button onclick="takeOrder('${o.id}')" class="w-full bg-yellow-400 font-bold py-2 mt-3 rounded-xl">Взять заказ</button>` : `<p class="text-xs text-green-600 font-bold mt-2">В работе</p>`}
-          </div>
-        `;
-      });
-    }
+      if (input.value || photoUrl) {
+        socket.emit('send_message', {
+          orderId: activeOrderId,
+          sender: currentUser.name,
+          text: input.value,
+          photoUrl
+        });
+        input.value = '';
+        fileInput.value = '';
+      }
+    };
 
-    function takeOrder(id) {
-      activeOrderId = id;
-      socket.emit('join_order', id);
-      socket.emit('take_order', { orderId: id, courierId: user.phone });
-      document.getElementById('courier-active-chat').classList.remove('hidden');
-      loadCourierOrders();
-    }
-
-    function sendChatMessage(role) {
-      const input = document.getElementById(role + '-msg-input');
-      if (!input.value || !activeOrderId) return;
-      socket.emit('send_message', { orderId: activeOrderId, sender: user.name, text: input.value });
-      input.value = '';
-    }
-
-    socket.on('new_message', (msg) => {
-      const boxId = user.role === 'client' ? 'client-chat-messages' : 'courier-chat-messages';
-      document.getElementById(boxId).innerHTML += `<div class="bg-white p-2 rounded-lg shadow-xs"><strong>${msg.sender}:</strong> ${msg.text}</div>`;
+    socket.on('new_message', (m) => {
+      if (m.order_id === activeOrderId) {
+        const box = document.getElementById('chat-messages');
+        box.innerHTML += renderMsg(m);
+        box.scrollTop = box.scrollHeight;
+      }
     });
-
-    socket.on('order_created', () => { if (user && user.role === 'courier') loadCourierOrders(); });
-
-    function logout() {
-      localStorage.removeItem('app_user');
-      location.reload();
-    }
   </script>
 </body>
 </html>
