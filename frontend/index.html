@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delivery App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans p-4">
+  <div class="max-w-md mx-auto bg-white rounded-xl shadow-md p-6">
+    <h1 class="text-2xl font-bold text-center mb-4">Служба Доставки</h1>
+
+    <!-- Авторизация -->
+    <div id="auth-section">
+      <h2 class="text-lg font-semibold mb-2">Вход</h2>
+      <input id="phone" type="tel" placeholder="Номер телефона" class="w-full border p-2 mb-2 rounded">
+      <input id="name" type="text" placeholder="Ваше имя" class="w-full border p-2 mb-3 rounded">
+      
+      <div class="flex gap-2">
+        <button onclick="login('client')" class="w-1/2 bg-blue-500 text-white py-2 rounded font-bold">Я Клиент</button>
+        <button onclick="login('courier')" class="w-1/2 bg-green-500 text-white py-2 rounded font-bold">Я Курьер</button>
+      </div>
+    </div>
+
+    <!-- Кабинет Клиента -->
+    <div id="client-section" class="hidden">
+      <h2 class="text-lg font-bold mb-2">Создать заказ</h2>
+      <textarea id="order-items" placeholder="Что привезти? (например: Кола из Жабки)" class="w-full border p-2 mb-2 rounded"></textarea>
+      <input id="order-address" type="text" placeholder="Адрес доставки" class="w-full border p-2 mb-3 rounded">
+      <button onclick="createOrder()" class="w-full bg-blue-600 text-white py-2 rounded font-bold">Заказать</button>
+      
+      <div id="client-active-order" class="mt-4 border-t pt-2 hidden">
+        <h3 class="font-bold">Текущий заказ:</h3>
+        <p id="client-order-info" class="text-sm my-1"></p>
+        <div id="client-chat" class="border p-2 h-32 overflow-y-auto my-2 text-xs bg-gray-50"></div>
+        <div class="flex gap-1">
+          <input id="client-msg" type="text" placeholder="Сообщение..." class="border p-1 text-sm flex-grow rounded">
+          <button onclick="sendMsg('client')" class="bg-blue-500 text-white px-3 text-sm rounded">Отправить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Кабинет Курьера -->
+    <div id="courier-section" class="hidden">
+      <h2 class="text-lg font-bold mb-2">Заказы в базе</h2>
+      <div id="orders-list" class="space-y-2"></div>
+      
+      <div id="courier-chat-section" class="mt-4 border-t pt-2 hidden">
+        <h3 class="font-bold">Чат по заказу:</h3>
+        <div id="courier-chat" class="border p-2 h-32 overflow-y-auto my-2 text-xs bg-gray-50"></div>
+        <div class="flex gap-1">
+          <input id="courier-msg" type="text" placeholder="Сообщение..." class="border p-1 text-sm flex-grow rounded">
+          <button onclick="sendMsg('courier')" class="bg-green-500 text-white px-3 text-sm rounded">Отправить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BACKEND_URL = "https://delivery-app-bnst.onrender.com";
+    const socket = io(BACKEND_URL);
+
+    let currentUser = { role: '', phone: '', name: '' };
+    let activeOrderId = null;
+
+    function login(role) {
+      currentUser.phone = document.getElementById('phone').value;
+      currentUser.name = document.getElementById('name').value;
+      currentUser.role = role;
+
+      if (!currentUser.phone) return alert("Введите номер!");
+
+      document.getElementById('auth-section').classList.add('hidden');
+      if (role === 'client') {
+        document.getElementById('client-section').classList.remove('hidden');
+      } else {
+        document.getElementById('courier-section').classList.remove('hidden');
+        loadOrders();
+      }
+    }
+
+    async function createOrder() {
+      const items = document.getElementById('order-items').value;
+      const address = document.getElementById('order-address').value;
+
+      const res = await fetch(`${BACKEND_URL}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientPhone: currentUser.phone, clientName: currentUser.name, items, address })
+      });
+      const order = await res.json();
+      activeOrderId = order.id;
+      socket.emit('join_order', activeOrderId);
+
+      document.getElementById('client-active-order').classList.remove('hidden');
+      document.getElementById('client-order-info').innerText = `ID: ${order.id} | Статус: ${order.status}`;
+    }
+
+    async function loadOrders() {
+      const res = await fetch(`${BACKEND_URL}/api/orders`);
+      const orders = await res.json();
+      const list = document.getElementById('orders-list');
+      list.innerHTML = '';
+
+      orders.forEach(o => {
+        list.innerHTML += `
+          <div class="border p-2 rounded bg-gray-50 text-sm">
+            <p><strong>Заказ ${o.id}</strong>: ${o.items}</p>
+            <p>Адрес: ${o.address}</p>
+            <p>Статус: ${o.status}</p>
+            ${o.status === 'created' ? `<button onclick="takeOrder('${o.id}')" class="bg-green-600 text-white px-2 py-1 mt-1 rounded text-xs">Взять заказ</button>` : ''}
+          </div>
+        `;
+      });
+    }
+
+    function takeOrder(id) {
+      activeOrderId = id;
+      socket.emit('join_order', id);
+      socket.emit('take_order', { orderId: id, courierId: currentUser.phone });
+      document.getElementById('courier-chat-section').classList.remove('hidden');
+      loadOrders();
+    }
+
+    function sendMsg(role) {
+      const input = document.getElementById(role + '-msg');
+      if (!input.value || !activeOrderId) return;
+      socket.emit('send_message', { orderId: activeOrderId, sender: currentUser.name, text: input.value });
+      input.value = '';
+    }
+
+    socket.on('order_created', () => { if (currentUser.role === 'courier') loadOrders(); });
+    socket.on('order_status_changed', () => { if (currentUser.role === 'courier') loadOrders(); });
+    socket.on('new_message', (msg) => {
+      const boxId = currentUser.role === 'client' ? 'client-chat' : 'courier-chat';
+      document.getElementById(boxId).innerHTML += `<div><strong>${msg.sender}:</strong> ${msg.text}</div>`;
+    });
+  </script>
+</body>
+</html>
